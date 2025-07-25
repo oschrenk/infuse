@@ -1,0 +1,29 @@
+name: Go
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: ['1.25.x']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache-dependency-path: go.sum
+      - name: Display Go version
+        run: go version
+      - name: Install dependencies
+        run: |
+          go get .
+      - name: Build
+        run: |
+          PKG=github.com/oschrenk/infuse/internal/cli
+          VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo dev)
+          COMMIT=$(git rev-parse --short HEAD)
+          BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          go build -v -ldflags "-X $PKG.Version=$VERSION -X $PKG.Commit=$COMMIT -X $PKG.BuildDate=$BUILD_DATE" ./cmd/infuse

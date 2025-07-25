@@ -1,0 +1,6 @@
+# Infuse configuration
+# See: https://github.com/oschrenk/infuse
+
+[repo]
+# Path to the infuse data repository
+# path = "/path/to/infuse/repo"
