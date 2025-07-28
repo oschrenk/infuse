@@ -2,46 +2,19 @@ package cmd
 
 import (
 	"fmt"
-	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/spf13/cobra"
+	"github.com/oschrenk/infuse/core"
 )
 
 func init() {
 	rootCmd.AddCommand(trackCmd)
 }
 
-func normalizeRemoteURL(rawURL string) []string {
-	var host, path string
-	
-	// Handle SSH URLs (git@host:repo format)
-	if strings.HasPrefix(rawURL, "git@") {
-		sshRegex := regexp.MustCompile(`git@([^:]+):(.+)`)
-		matches := sshRegex.FindStringSubmatch(rawURL)
-		if len(matches) == 3 {
-			host = matches[1]
-			path = strings.TrimSuffix(matches[2], ".git")
-		}
-	} else if strings.HasPrefix(rawURL, "http://") || strings.HasPrefix(rawURL, "https://") {
-		// Handle HTTP/HTTPS URLs
-		if u, err := url.Parse(rawURL); err == nil {
-			host = u.Host
-			path = strings.TrimPrefix(u.Path, "/")
-			path = strings.TrimSuffix(path, ".git")
-		}
-	}
-	
-	if host != "" && path != "" {
-		return []string{host, path}
-	}
-	
-	return []string{rawURL}
-}
 
 var trackCmd = &cobra.Command{
 	Use:   "track [path]",
@@ -82,14 +55,14 @@ var trackCmd = &cobra.Command{
 			for _, remote := range remotes {
 				if remote.Config().Name == "origin" {
 					if len(remote.Config().URLs) > 0 {
-						remoteInfo = normalizeRemoteURL(remote.Config().URLs[0])
+						remoteInfo = core.NormalizeRemoteURL(remote.Config().URLs[0])
 					}
 					break
 				}
 			}
 			// If no origin found, use first remote
 			if len(remoteInfo) == 0 && len(remotes[0].Config().URLs) > 0 {
-				remoteInfo = normalizeRemoteURL(remotes[0].Config().URLs[0])
+				remoteInfo = core.NormalizeRemoteURL(remotes[0].Config().URLs[0])
 			}
 		}
 		
