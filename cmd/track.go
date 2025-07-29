@@ -2,19 +2,15 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
-	"strings"
 
-	"github.com/go-git/go-git/v5"
+	git "github.com/oschrenk/infuse/git"
 	"github.com/spf13/cobra"
-	"github.com/oschrenk/infuse/core"
 )
 
 func init() {
 	rootCmd.AddCommand(trackCmd)
 }
-
 
 var trackCmd = &cobra.Command{
 	Use:   "track [path]",
@@ -27,92 +23,31 @@ var trackCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		
-		repo, err := git.PlainOpenWithOptions(absPath, &git.PlainOpenOptions{
-			DetectDotGit: true,
-		})
+
+		repo, err := git.Load(absPath)
 		if err != nil {
 			fmt.Printf("Path %s is not within a git repository\n", path)
 			return nil
 		}
-		
-		// Get the repository root
-		workTree, err := repo.Worktree()
+
+		// Get remote info string
+		remoteStr, err := repo.GetNormalizedRemote()
 		if err != nil {
 			return err
 		}
-		repoRoot := workTree.Filesystem.Root()
-		
-		// Get remote URL
-		remotes, err := repo.Remotes()
+
+		// Check if path is tracked
+		isTracked, err := repo.IsTracked(absPath)
 		if err != nil {
 			return err
 		}
-		
-		var remoteInfo []string
-		if len(remotes) > 0 {
-			// Try to find 'origin' remote first, otherwise use the first one
-			for _, remote := range remotes {
-				if remote.Config().Name == "origin" {
-					if len(remote.Config().URLs) > 0 {
-						remoteInfo = core.NormalizeRemoteURL(remote.Config().URLs[0])
-					}
-					break
-				}
-			}
-			// If no origin found, use first remote
-			if len(remoteInfo) == 0 && len(remotes[0].Config().URLs) > 0 {
-				remoteInfo = core.NormalizeRemoteURL(remotes[0].Config().URLs[0])
-			}
-		}
-		
-		// Get relative path from repo root
-		relPath, err := filepath.Rel(repoRoot, absPath)
-		if err != nil {
-			return err
-		}
-		
-		// Check if file/directory is tracked
-		status, err := workTree.Status()
-		if err != nil {
-			return err
-		}
-		
-		// Prepare remote info string
-		remoteStr := ""
-		if len(remoteInfo) == 2 {
-			remoteStr = fmt.Sprintf(", remote: [%s, %s]", remoteInfo[0], remoteInfo[1])
-		} else if len(remoteInfo) == 1 {
-			remoteStr = fmt.Sprintf(", remote: [%s]", remoteInfo[0])
-		}
-		
-		// Check if it's a file and tracked
-		if fileInfo, err := os.Stat(absPath); err == nil && !fileInfo.IsDir() {
-			if fileStatus, exists := status[relPath]; exists {
-				if fileStatus.Staging == git.Untracked && fileStatus.Worktree == git.Untracked {
-					fmt.Printf("hello %s (git repository detected, file untracked%s)\n", path, remoteStr)
-				} else {
-					fmt.Printf("hello %s (git repository detected, file tracked%s)\n", path, remoteStr)
-				}
-			} else {
-				fmt.Printf("hello %s (git repository detected, file tracked%s)\n", path, remoteStr)
-			}
+
+		if isTracked {
+			fmt.Printf("hello %s (git repository detected, tracked%s)\n", path, remoteStr)
 		} else {
-			// For directories, check if any files within are tracked
-			isTracked := false
-			for filePath := range status {
-				if strings.HasPrefix(filePath, relPath) {
-					isTracked = true
-					break
-				}
-			}
-			if isTracked {
-				fmt.Printf("hello %s (git repository detected, directory has tracked files%s)\n", path, remoteStr)
-			} else {
-				fmt.Printf("hello %s (git repository detected, directory untracked%s)\n", path, remoteStr)
-			}
+			fmt.Printf("hello %s (git repository detected, untracked%s)\n", path, remoteStr)
 		}
-		
+
 		return nil
 	},
 }
