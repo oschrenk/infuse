@@ -42,7 +42,7 @@ func (r *Repo) GetNormalizedRemote() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	
+
 	var remoteInfo []string
 	if len(remotes) > 0 {
 		// Try to find 'origin' remote first, otherwise use the first one
@@ -59,15 +59,15 @@ func (r *Repo) GetNormalizedRemote() (string, error) {
 			remoteInfo = normalizeRemoteURL(remotes[0].Config().URLs[0])
 		}
 	}
-	
+
 	// Prepare remote info string
 	remoteStr := ""
 	if len(remoteInfo) == 2 {
-		remoteStr = fmt.Sprintf(", remote: [%s, %s]", remoteInfo[0], remoteInfo[1])
+		remoteStr = fmt.Sprintf("%s/%s", remoteInfo[0], remoteInfo[1])
 	} else if len(remoteInfo) == 1 {
-		remoteStr = fmt.Sprintf(", remote: [%s]", remoteInfo[0])
+		remoteStr = fmt.Sprintf("%s", remoteInfo[0])
 	}
-	
+
 	return remoteStr, nil
 }
 
@@ -87,7 +87,7 @@ func (r *Repo) IsTracked(path string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	
+
 	repoRoot := workTree.Filesystem.Root()
 	relPath, err := filepath.Rel(repoRoot, absPath)
 	if err != nil {
@@ -124,7 +124,7 @@ func (r *Repo) IsTracked(path string) (bool, error) {
 // Returns [host, path] for valid URLs, or [rawURL] if parsing fails.
 func normalizeRemoteURL(rawURL string) []string {
 	var host, path string
-	
+
 	// Handle SSH URLs (git@host:repo format)
 	if strings.HasPrefix(rawURL, "git@") {
 		sshRegex := regexp.MustCompile(`git@([^:]+):(.+)`)
@@ -141,10 +141,11 @@ func normalizeRemoteURL(rawURL string) []string {
 			path = strings.TrimSuffix(path, ".git")
 		}
 	}
-	
+
 	if host != "" && path != "" {
 		return []string{host, path}
 	}
-	
+
 	return []string{rawURL}
 }
+
