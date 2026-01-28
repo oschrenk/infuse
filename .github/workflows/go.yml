@@ -17,9 +17,6 @@ jobs:
           cache-dependency-path: go.sum
       - name: Display Go version
         run: go version
-      - name: Install dependencies
-        run: |
-          go get .
       - name: Build
         run: |
           PKG=github.com/oschrenk/infuse/internal/cli
