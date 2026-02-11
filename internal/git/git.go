@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -123,47 +124,23 @@ func (r *Repo) Repository() *git.Repository {
 }
 
 // IsTracked checks if a file at the given path is tracked in the repository
+// using git ls-files --error-unmatch.
 func (r *Repo) IsTracked(path string) (bool, error) {
-	absPath, err := filepath.Abs(path)
+	root, err := r.Root()
 	if err != nil {
 		return false, err
 	}
 
-	workTree, err := r.repo.Worktree()
+	cmd := exec.Command("git", "ls-files", "--error-unmatch", path)
+	cmd.Dir = root
+	err = cmd.Run()
 	if err != nil {
-		return false, err
-	}
-
-	repoRoot := workTree.Filesystem.Root()
-	relPath, err := filepath.Rel(repoRoot, absPath)
-	if err != nil {
-		return false, err
-	}
-
-	// Check if file/directory is tracked
-	status, err := workTree.Status()
-	if err != nil {
-		return false, err
-	}
-
-	// Check if it's a file and tracked
-	if fileInfo, err := os.Stat(absPath); err == nil && !fileInfo.IsDir() {
-		if fileStatus, exists := status[relPath]; exists {
-			// If file exists in status and is not untracked, it's tracked
-			return !(fileStatus.Staging == git.Untracked && fileStatus.Worktree == git.Untracked), nil
-		} else {
-			// If file doesn't exist in status, it means it's tracked (committed)
-			return true, nil
+		if _, ok := err.(*exec.ExitError); ok {
+			return false, nil
 		}
-	} else {
-		// For directories, check if any files within are tracked
-		for filePath := range status {
-			if strings.HasPrefix(filePath, relPath) {
-				return true, nil
-			}
-		}
-		return false, nil
+		return false, err
 	}
+	return true, nil
 }
 
 // normalizeRemoteURL parses a git remote URL and returns normalized components.
