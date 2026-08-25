@@ -39,6 +39,9 @@ The taskfile adds the `v` prefix for tags and ldflags, and `flake.nix` reads the
 Changing `go.mod` or `go.sum` invalidates `vendorHash` in `flake.nix`.
 Set it to `lib.fakeHash`, run `nix build`, and paste the expected hash from the error.
 
+The `build` workflow builds the flake on every push and pushes the result to the `oschrenk` Cachix cache, which the flake offers as a substituter.
+It needs a `CACHIX_AUTH_TOKEN` repository secret holding a write token for that cache.
+
 ## Release
 
 1. Ensure all changes are committed and pushed
