@@ -8,6 +8,22 @@ Manage files across git repositories.
 - You don't want to commit these files to the repository
 - You want to track changes to these files in a central location
 
+## Installation
+
+### nix
+
+```bash
+nix profile install github:oschrenk/infuse
+```
+
+Prebuilt binaries come from the `oschrenk` Cachix cache, which the flake offers as a substituter.
+
+### From source
+
+```bash
+task install
+```
+
 ## Getting started
 
 ```
