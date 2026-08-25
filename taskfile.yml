@@ -1,16 +1,18 @@
 version: '3'
 vars:
   APP_NAME: "infuse"
+  # ./VERSION holds a bare semver (e.g. 0.1.2); the "v" prefix is added here
+  # and the file is read as-is by flake.nix.
+  APP_VERSION:
+    sh: echo "v$(cat VERSION)"
   RELEASE_DIR: "./.release"
   BUILD_TARGET: "./{{.APP_NAME}}"
-  VERSION:
-    sh: git describe --tags --always --dirty 2>/dev/null || echo dev
   COMMIT:
     sh: git rev-parse --short HEAD 2>/dev/null || echo unknown
   BUILD_DATE:
     sh: date -u +%Y-%m-%dT%H:%M:%SZ
   LDFLAGS: >-
-    -X github.com/oschrenk/infuse/internal/cli.Version={{.VERSION}} -X github.com/oschrenk/infuse/internal/cli.Commit={{.COMMIT}} -X github.com/oschrenk/infuse/internal/cli.BuildDate={{.BUILD_DATE}}
+    -X github.com/oschrenk/infuse/internal/cli.Version={{.APP_VERSION}} -X github.com/oschrenk/infuse/internal/cli.Commit={{.COMMIT}} -X github.com/oschrenk/infuse/internal/cli.BuildDate={{.BUILD_DATE}}
 tasks:
   run:
     cmds:
@@ -60,24 +62,25 @@ tasks:
       - GOOS=darwin GOARCH=arm64 go build -v -ldflags '{{.LDFLAGS}}' -o {{.RELEASE_DIR}}/{{.APP_NAME}}-darwin-arm64 ./cmd/infuse
     deps: [tidy]
   version:
-    desc: Show current version info from git
+    desc: Show current version info
     cmds:
-      - echo "Version {{.VERSION}} ({{.COMMIT}}, {{.BUILD_DATE}})"
+      - echo "Version {{.APP_VERSION}} ({{.COMMIT}}, {{.BUILD_DATE}})"
     silent: true
   tag:
-    desc: "Create and push git tag (usage: task tag TAG=v0.1.0)"
+    desc: Create and push git tag from VERSION
     requires:
-      vars: [TAG]
-    cmds:
-      - git tag "{{.TAG}}"
-      - git push origin "{{.TAG}}"
-  release:
-    desc: "Create GitHub release with artifacts (usage: task release TAG=v0.1.0)"
-    requires:
-      vars: [APP_NAME, RELEASE_DIR, TAG]
+      vars: [APP_VERSION]
     deps: [artifacts]
     cmds:
-      - gh release create --generate-notes "{{.TAG}}" {{.RELEASE_DIR}}/{{.APP_NAME}}-*
+      - git tag "{{.APP_VERSION}}"
+      - git push origin "{{.APP_VERSION}}"
+  release:
+    desc: Create GitHub release with artifacts from VERSION
+    requires:
+      vars: [APP_NAME, RELEASE_DIR, APP_VERSION]
+    deps: [tag]
+    cmds:
+      - gh release create --generate-notes "{{.APP_VERSION}}" {{.RELEASE_DIR}}/{{.APP_NAME}}-*
   sha:
     desc: Generate SHA256 checksums
     requires:
