@@ -82,6 +82,40 @@ func (r *Repo) AddExclude(relPath string) error {
 	return nil
 }
 
+// RemoveExclude drops every line equal to relPath from .git/info/exclude.
+// A missing file or a missing line is not an error.
+func (r *Repo) RemoveExclude(relPath string) error {
+	root, err := r.Root()
+	if err != nil {
+		return err
+	}
+
+	excludePath := filepath.Join(root, ".git", "info", "exclude")
+	existing, err := os.ReadFile(excludePath)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("reading exclude file: %w", err)
+	}
+
+	lines := strings.Split(string(existing), "\n")
+	kept := lines[:0]
+	for _, line := range lines {
+		if line != relPath {
+			kept = append(kept, line)
+		}
+	}
+	if len(kept) == len(lines) {
+		return nil
+	}
+
+	if err := os.WriteFile(excludePath, []byte(strings.Join(kept, "\n")), 0644); err != nil {
+		return fmt.Errorf("writing exclude file: %w", err)
+	}
+	return nil
+}
+
 // GetNormalizedRemote gets the normalized remote information and formats it as a string
 func (r *Repo) GetNormalizedRemote() (string, error) {
 	// Get remote URL
