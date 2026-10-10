@@ -20,6 +20,18 @@
       # by the ldflags below, so `infuse version` matches the git tag.
       version = nixpkgs.lib.fileContents ./VERSION;
 
+      # The sandbox has no .git, but the flake still knows its commit. Both
+      # values come from the source, so the derivation stays reproducible.
+      # dirtyShortRev covers a build from a working tree with local changes.
+      commit = self.shortRev or self.dirtyShortRev or "unknown";
+      # lastModifiedDate is the commit time as YYYYMMDDHHMMSS, in UTC.
+      commitDate =
+        let
+          d = self.lastModifiedDate;
+          at = start: len: builtins.substring start len d;
+        in
+        "${at 0 4}-${at 4 2}-${at 6 2}T${at 8 2}:${at 10 2}:${at 12 2}Z";
+
       # aarch64-darwin only: it is what CI builds, so it is the only system the
       # binary cache is ever populated for.
       systems = [
@@ -38,12 +50,14 @@
           # run `nix build`, then paste the expected hash from the error.
           vendorHash = "sha256-lKhZIgKQPLppAlXHXvD7U/aWJE/hQ5wEuB92Jj8S3To=";
 
-          # Commit and BuildDate keep their "unknown" defaults: the sandbox has
-          # no .git and a build date would make the derivation unreproducible.
+          # BuildDate carries the commit date: a real build date would make
+          # the derivation unreproducible.
           ldflags = [
             "-s"
             "-w"
             "-X github.com/oschrenk/infuse/internal/cli.Version=v${version}"
+            "-X github.com/oschrenk/infuse/internal/cli.Commit=${commit}"
+            "-X github.com/oschrenk/infuse/internal/cli.BuildDate=${commitDate}"
           ];
 
           # `completion` is hidden (internal/cli/root.go) but not disabled, and
